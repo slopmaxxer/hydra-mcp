@@ -122,15 +122,19 @@ async def test_read_tools(hydra):
     evaluation = await call(server, 'get_eval', {'eval_id': 1, 'status': 'failed'})
     assert evaluation['counts'] == {'succeeded': 1, 'failed': 1, 'queued': 1}
     assert [(b['id'], b['status']) for b in evaluation['builds']] == [(10, 'dependency failed')]
-    build = await call(server, 'get_build', {'build_id': 10})
+    build = await call(server, 'get_build', {'build_id': 10, 'steps': 'all'})
     assert build['outputs'] == {'out': '/nix/store/yyy-b'}
-    assert [s['nr'] for s in build['steps']] == [3, 2, 1]
-    assert build['steps'][0]['outputs'] == ['/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-example-lib',
+    assert [s['nr'] for s in build['steps']] == [4, 3, 2, 1]
+    assert build['steps'][1]['outputs'] == ['/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-example-lib',
                                            '/nix/store/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-example-lib-dev']
-    assert build['steps'][0]['status'] == 'Failed: builder failed with exit code 2'
-    assert build['steps'][1]['kind'] == 'substitution'
-    assert build['steps'][2]['propagated_from_build'] == 7
-    assert build['failed_steps'] == [3, 1]
+    assert build['steps'][1]['status'] == 'Failed: builder failed with exit code 2'
+    assert build['steps'][2]['kind'] == 'substitution'
+    assert build['steps'][3]['propagated_from_build'] == 7
+    assert (build['failed_steps'], build['running_steps'], build['steps_total']) == ([3, 1], [4], 4)
+    relevant = await call(server, 'get_build', {'build_id': 10, 'recent_steps': 0})
+    assert [s['nr'] for s in relevant['steps']] == [4, 3, 1]  # running + failed, no succeeded substitution
+    bare = await call(server, 'get_build', {'build_id': 10, 'steps': 'none'})
+    assert 'steps' not in bare and bare['status'] == 'dependency failed'
     assert not any(r.method != 'GET' for r in fake.requests)
 
 

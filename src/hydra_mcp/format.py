@@ -132,6 +132,19 @@ def clean(text: str) -> str:
     return CONTROL.sub('', text)
 
 
+RUNNING_STEP = ('Preparing', 'Connecting', 'Sending', 'Building', 'Waiting', 'Receiving', 'Post-processing')
+
+
+def step_state(step: dict[str, Any]) -> str:
+    """succeeded, running or failed, from the status text of a parsed build step."""
+    status = step.get('status') or ''
+    if status.startswith('Succeeded'):
+        return 'succeeded'
+    if status.startswith(RUNNING_STEP):
+        return 'running'
+    return 'failed'
+
+
 def parse_steps(html: str, base: str) -> list[dict[str, Any]]:
     """Build steps from the build page's "Build steps" tab (Hydra has no JSON for them)."""
     soup = BeautifulSoup(html, 'html.parser')

@@ -17,7 +17,7 @@ from pydantic import Field
 from . import __version__
 from .client import HydraClient, HydraError
 from .config import Config, ConfigError, config_path, fingerprint, load_config
-from .format import (build_summary, clean, eval_summary, iso, jobset_summary, parse_steps,
+from .format import (build_summary, step_state, clean, eval_summary, iso, jobset_summary, parse_steps,
                      status_group)
 
 READ = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True)
@@ -187,17 +187,28 @@ def create_server(config: Config | None = None, clients: dict[str, HydraClient] 
         return result
 
     @server.tool(annotations=READ)
-    async def get_build(build_id: Id, steps: bool = True, instance: InstanceName = None) -> dict[str, Any]:
-        """Get a build: status, timing, derivation, outputs, products, metrics and (optionally) its build steps.
+    async def get_build(build_id: Id, steps: Literal['none', 'relevant', 'all'] = 'relevant',
+                        recent_steps: Annotated[int, Field(ge=0, le=100, description='With steps="relevant": also the newest N steps')] = 5,
+                        instance: InstanceName = None) -> dict[str, Any]:
+        """Get a build: status, timing, derivation, outputs, products, metrics and its build steps.
 
-        Steps show what ran for the build; for "dependency failed" builds they name the failed dependency.
+        steps="relevant" (default) lists failed and running steps plus the newest few; "all" lists every
+        step (large for big closures). Failed steps name the dependency behind "dependency failed".
         """
         hydra = client(instance)
         result = build_summary(await call(hydra.get(f'/build/{build_id}')), hydra.instance.url, full=True)
-        if steps:
+        if steps != 'none':
             all_steps = parse_steps(await call(hydra.page(f'/build/{build_id}')), hydra.instance.url)
-            result['steps'] = all_steps
-            result['failed_steps'] = [s['nr'] for s in all_steps if s['status'] and not s['status'].startswith(('Succeeded', 'Building', 'Preparing', 'Connecting', 'Sending', 'Receiving', 'Waiting', 'Post-processing'))]
+            failed = [s['nr'] for s in all_steps if step_state(s) == 'failed']
+            running = [s['nr'] for s in all_steps if step_state(s) == 'running']
+            if running and not result['finished']:
+                result['status'] = 'building'
+            result |= {'steps_total': len(all_steps), 'failed_steps': failed, 'running_steps': running}
+            if steps == 'all':
+                result['steps'] = all_steps
+            else:
+                newest = {s['nr'] for s in all_steps[:recent_steps]}  # the page lists newest first
+                result['steps'] = [s for s in all_steps if s['nr'] in newest or s['nr'] in failed or s['nr'] in running]
         return result
 
     @server.tool(annotations=READ)
@@ -267,7 +278,7 @@ def create_server(config: Config | None = None, clients: dict[str, HydraClient] 
             'shown': len(queue or []),
             'shown_by_jobset': dict(per_jobset.most_common()),
             'queue': [build_summary(b, hydra.instance.url) for b in queue or []],
-            'running_builds': [build_summary(b, hydra.instance.url) for b in _unique(running or [])],
+            'running_builds': [build_summary(b, hydra.instance.url) | {'status': 'building'} for b in _unique(running or [])],
         }
 
     @server.tool(annotations=READ)

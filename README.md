@@ -14,7 +14,7 @@ forks (Lix's Hydra), and can talk to several instances at once.
 | `list_projects`, `get_project` | Projects; a project's jobsets with error flags and build counts |
 | `get_jobset` | Configuration, evaluation state, eval/fetch errors, recent evaluations |
 | `list_evals`, `get_eval` | Evaluations (inputs/flake rev, counts), builds filtered by status |
-| `get_build` | Status, timing, derivation, outputs, products, metrics, build steps |
+| `get_build` | Status, timing, derivation, outputs, products, metrics; failed, running and newest build steps (`steps="all"` for every one) |
 | `get_build_log` | Tail of a build's log or of one build step (e.g. the failed dependency) |
 | `get_job` | A job's build in the newest evaluation and its latest successful build |
 | `get_queue` | Queue size, top of the queue, running builds |
