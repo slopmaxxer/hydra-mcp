@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><body>
+<!-- Synthetic page shaped like Hydra's build.tt "Build steps" tab. -->
+<div class="tab-content">
+  <div id="tabs-summary" class="tab-pane active">
+    <table class="table"><tbody><tr><td>unrelated</td><td>row</td></tr></tbody></table>
+  </div>
+  <div id="tabs-buildsteps" class="tab-pane">  <table class="table table-striped table-condensed clickable-rows">
+    <thead>
+      <tr><th>Nr</th><th>Step</th><th>Duration</th><th>Machine</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>3</td>
+        <td>Build of <tt>/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-example-lib,<br/>/nix/store/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-example-lib-dev</tt></td>
+        <td>1m&nbsp;5s</td>
+        <td>builder1</td>
+        <td class="step-status"><span class="error">Failed</span>: <em>builder failed with exit code 2</em> (<a class="row-link" href="https://hydra.test/build/10/nixlog/3">log</a>, <a href="https://hydra.test/build/10/nixlog/3/raw">raw</a>, <a href="https://hydra.test/build/10/nixlog/3/tail">tail</a>)</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Substitution of <tt>/nix/store/cccccccccccccccccccccccccccccccc-glibc</tt></td>
+        <td>0s</td>
+        <td><em>n/a</em></td>
+        <td class="step-status">Succeeded</td>
+      </tr>
+      <tr>
+        <td>1</td>
+        <td>Build of <tt>/nix/store/dddddddddddddddddddddddddddddddd-example</tt></td>
+        <td><em>n/a</em></td>
+        <td><em>n/a</em></td>
+        <td class="step-status"><span class="error">Cached failure</span> (propagated from <a href="https://hydra.test/build/7">build 7</a>)</td>
+      </tr>
+    </tbody>
+  </table>    </div>
+</div>
+</body></html>

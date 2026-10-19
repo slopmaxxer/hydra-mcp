@@ -1,0 +1,28 @@
+[project]
+name = "hydra-mcp"
+version = "0.1.0"
+description = "MCP server for Hydra, the Nix CI server: jobsets, evaluations, builds, logs, queue and admin actions"
+readme = "README.md"
+authors = [{ name = "slop", email = "slopmoder@tutamail.com" }]
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["httpx>=0.28.1", "beautifulsoup4>=4.13", "mcp>=2.3"]
+
+[project.scripts]
+hydra-mcp = "hydra_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/slopinger/hydra-mcp"
+
+[build-system]
+requires = ["uv_build>=0.13.1,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["live: calls a real Hydra instance (HYDRA_LIVE_URL, default https://hydra.nixos.org)"]
+addopts = "-m 'not live'"
