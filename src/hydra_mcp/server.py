@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from collections import Counter
 from contextlib import asynccontextmanager
+from pathlib import Path
+import asyncio
 import json
 from typing import Annotated, Any, Literal
 from urllib.parse import quote, urlsplit
@@ -14,7 +16,7 @@ from pydantic import Field
 
 from . import __version__
 from .client import HydraClient, HydraError
-from .config import Config, ConfigError, load_config
+from .config import Config, ConfigError, config_path, fingerprint, load_config
 from .format import (build_summary, clean, eval_summary, iso, jobset_summary, parse_steps,
                      status_group)
 
@@ -47,18 +49,34 @@ def _seg(value: str) -> str:
     return quote(value, safe='')
 
 
-def create_server(config: Config | None = None, clients: dict[str, HydraClient] | None = None) -> MCPServer:
+def create_server(config: Config | None = None, clients: dict[str, HydraClient] | None = None,
+                  config_file: Path | None = None) -> MCPServer:
+    """A fixed `config`, or else the config file (default path) re-read whenever it changes."""
     pool: dict[str, HydraClient] = dict(clients or {})
     owned: set[str] = set()
+    retired: set[asyncio.Task] = set()
     cfg: Config | None = config
+    loaded_from: tuple | None = None
 
     def settings() -> Config:
-        nonlocal cfg
-        if cfg is None:
+        nonlocal cfg, loaded_from
+        if config is not None:
+            return config
+        path = config_file or config_path()
+        current = fingerprint(path)
+        if cfg is None or current != loaded_from:
             try:
-                cfg = load_config()
+                fresh = load_config(path)
             except ConfigError as error:
                 raise ToolError(str(error)) from error
+            # Instances may have changed URL or credentials: drop their clients (and sessions).
+            for name in list(owned):
+                stale = pool.pop(name)
+                owned.discard(name)
+                task = asyncio.get_running_loop().create_task(stale.aclose())
+                retired.add(task)
+                task.add_done_callback(retired.discard)
+            cfg, loaded_from = fresh, current
         return cfg
 
     def client(instance: str | None) -> HydraClient:
@@ -87,6 +105,8 @@ def create_server(config: Config | None = None, clients: dict[str, HydraClient] 
         finally:
             for name in owned:
                 await pool[name].aclose()
+            if retired:
+                await asyncio.gather(*retired, return_exceptions=True)
 
     server = MCPServer(name='hydra', title='Hydra (Nix CI)', version=__version__,
                        website_url='https://github.com/slopinger/hydra-mcp', instructions=INSTRUCTIONS,
@@ -441,14 +461,13 @@ def main() -> None:
     args = parser.parse_args()
     import logging
     logging.getLogger('httpx').setLevel(logging.WARNING)  # no per-request INFO lines on stderr
-    config = None
-    if args.config:
-        from pathlib import Path
+    config_file = Path(args.config).expanduser() if args.config else None
+    if config_file is not None:
         try:
-            config = load_config(Path(args.config).expanduser())
+            load_config(config_file)
         except ConfigError as error:
             parser.error(str(error))
-    server = create_server(config)
+    server = create_server(config_file=config_file)
     if args.transport == 'stdio':
         server.run('stdio')
     else:

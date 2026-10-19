@@ -55,3 +55,26 @@ def test_rejects_inline_passwords_and_unknown_keys(tmp_path):
     config.write_text('default = "b"\n[instances.a]\nurl = "https://h.example"\n')
     with pytest.raises(ConfigError, match='default instance'):
         load_config(config)
+
+
+async def test_server_reloads_changed_config(tmp_path):
+    from hydra_mcp.server import create_server
+    first, second = tmp_path / 'a.toml', tmp_path / 'b.toml'
+    first.write_text('[instances.one]\nurl = "https://one.example"\n')
+    second.write_text('default = "two"\n[instances.two]\nurl = "https://two.example"\n')
+    link = tmp_path / 'config.toml'
+    link.symlink_to(first)  # Home Manager's way: a symlink that a switch repoints
+    server = create_server(config_file=link)
+
+    async def instances():
+        result = await server.call_tool('list_instances', {})
+        return result.structured_content['default'], [i['url'] for i in result.structured_content['instances']]
+
+    assert await instances() == ('one', ['https://one.example'])
+    link.unlink()
+    link.symlink_to(second)
+    assert await instances() == ('two', ['https://two.example'])
+    second.write_text('default = "two"\n[instances.two]\nurl = "https://two.example/hydra"\n')
+    assert await instances() == ('two', ['https://two.example/hydra'])
+    link.unlink()
+    assert await instances() == ('default', ['https://hydra.nixos.org'])  # no file: env defaults

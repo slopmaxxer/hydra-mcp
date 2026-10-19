@@ -51,7 +51,8 @@ password_file = "~/.secrets/hydra/password"
 
 Passwords are only read from files, at login time; they never appear in the config, the process
 arguments or tool results. URLs must be HTTPS (plain HTTP only for loopback), and the client never
-follows redirects to another host. Without a config file, `HYDRA_URL` (default
+follows redirects to another host. The file is re-read whenever it changes (including a Home
+Manager switch that repoints its symlink), so no restart is needed. Without a config file, `HYDRA_URL` (default
 `https://hydra.nixos.org`), `HYDRA_USERNAME` and `HYDRA_PASSWORD_FILE` describe a single instance.
 
 ## Running

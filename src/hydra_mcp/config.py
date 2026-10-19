@@ -84,6 +84,17 @@ def config_path(env: dict[str, str] | os._Environ[str] = os.environ) -> Path:
     return base / 'hydra-mcp' / 'config.toml'
 
 
+def fingerprint(path: Path) -> tuple[str, int, int] | None:
+    """Identity of the config file's current content: Home Manager swaps a symlink into the
+    store (where every mtime is 1), so the resolved path matters as much as mtime and size."""
+    try:
+        resolved = path.resolve()
+        stat = resolved.stat()
+    except OSError:
+        return None
+    return str(resolved), stat.st_mtime_ns, stat.st_size
+
+
 def load_config(path: Path | None = None, env: dict[str, str] | os._Environ[str] = os.environ) -> Config:
     """Read the TOML config; without one, use HYDRA_URL/HYDRA_USERNAME/HYDRA_PASSWORD_FILE."""
     path = path or config_path(env)
