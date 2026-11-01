@@ -45,6 +45,8 @@ class FakeHydra:
             self.puts[path] = json.loads(request.content)
             return httpx.Response(201, json={'redirect': BASE + path})
         if path in ('/build/10/restart', '/build/10/cancel', '/eval/1/restart-failed'):
+            if method != 'POST' or request.headers.get('referer') != BASE + '/':
+                return httpx.Response(405, json={'error': 'Request must be POSTed.'})
             if not self.logged_in(request):
                 return httpx.Response(403, json={'error': 'Only the project members can restart.'})
             return httpx.Response(302, headers={'location': BASE + path.rsplit('/', 1)[0]})
@@ -161,7 +163,8 @@ async def test_write_tools_log_in_once(hydra):
     assert triggered['triggered'] == ['p:j']
     await call(server, 'restart_build', {'build_id': 10})
     await call(server, 'manage_eval', {'eval_id': 1, 'action': 'restart-failed'})
-    assert [r.url.path for r in fake.requests if r.method == 'POST'] == ['/login', '/api/push']
+    assert [r.url.path for r in fake.requests if r.method == 'POST'] == [
+        '/login', '/api/push', '/build/10/restart', '/eval/1/restart-failed']
     push = next(r for r in fake.requests if r.url.path == '/api/push')
     assert push.headers['origin'] == BASE
 

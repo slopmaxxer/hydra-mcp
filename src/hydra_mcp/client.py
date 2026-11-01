@@ -131,8 +131,11 @@ class HydraClient:
             raise HydraError(f'{self.instance.name}: GET {path}: {_error_text(response, body)}')
         return None
 
-    async def action(self, path: str, method: str = 'GET', params: dict | None = None) -> str:
-        """Run a privileged action that answers with a redirect back to the object page."""
+    async def action(self, path: str, method: str = 'POST', params: dict | None = None) -> str:
+        """Run a privileged action that answers with a redirect back to the object page.
+
+        POST, with the same-origin Referer every Hydra accepts: newer ones refuse
+        state changes by GET, which a link from another site could trigger."""
         response, body = await self.request(method, path, params=params, auth=True, follow=False, limit=256 * 1024)
         if response.is_redirect or response.status_code == 200:
             return urljoin(self.url(path), response.headers.get('location', path))
