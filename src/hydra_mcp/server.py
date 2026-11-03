@@ -109,7 +109,7 @@ def create_server(config: Config | None = None, clients: dict[str, HydraClient] 
                 await asyncio.gather(*retired, return_exceptions=True)
 
     server = MCPServer(name='hydra', title='Hydra (Nix CI)', version=__version__,
-                       website_url='https://github.com/slopinger/hydra-mcp', instructions=INSTRUCTIONS,
+                       website_url='https://github.com/slopmaxxer/hydra-mcp', instructions=INSTRUCTIONS,
                        lifespan=lifespan)
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False))

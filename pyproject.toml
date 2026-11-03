@@ -13,7 +13,7 @@ dependencies = ["httpx>=0.28.1", "beautifulsoup4>=4.13", "mcp>=2.3"]
 hydra-mcp = "hydra_mcp.server:main"
 
 [project.urls]
-Homepage = "https://github.com/slopinger/hydra-mcp"
+Homepage = "https://github.com/slopmaxxer/hydra-mcp"
 
 [build-system]
 requires = ["uv_build>=0.13.1,<0.14.0"]
