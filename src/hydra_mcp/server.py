@@ -443,6 +443,10 @@ async def _existing(hydra: HydraClient, path: str) -> dict[str, Any] | None:
     response, body = await hydra.request('GET', path)
     if response.status_code == 404:
         return None
+    # Some Hydras (hydra.kyouma.net) crash in projectChain on a missing project instead of
+    # answering 404: "Can't call method "owner" on an undefined value".
+    if response.status_code == 500 and b'on an undefined value' in body:
+        return None
     if response.status_code >= 400:
         raise ToolError(f'{hydra.instance.name}: GET {path}: HTTP {response.status_code}')
     return json.loads(body)

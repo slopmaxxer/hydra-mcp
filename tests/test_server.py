@@ -55,6 +55,15 @@ class FakeHydra:
                                               'jobsets': ['j'], 'hidden': False}, {'name': 'secret', 'hidden': True}])
         if path == '/jobset/p/j':
             return httpx.Response(200, json=self.jobset)
+        if path == '/api/jobsets' and request.url.params.get('project') == 'newp':
+            return httpx.Response(200, json=[])
+        if path == '/project/newp':
+            if path in self.puts:
+                return httpx.Response(200, json={'name': 'newp', 'owner': 'alice', 'enabled': True, 'hidden': False,
+                                                 'jobsets': []} | self.puts[path])
+            # What some Hydras answer for a missing project instead of 404 (hydra.kyouma.net).
+            return httpx.Response(500, json={'error': 'Caught exception in Hydra::Controller::Project->projectChain '
+                                                      '"Can\'t call method "owner" on an undefined value at x line 1."'})
         if path == '/jobset/p/new':
             if path in self.puts:
                 return httpx.Response(200, json={'project': 'p', 'type': 1, 'enabled': 2} | self.puts[path])
@@ -184,6 +193,14 @@ async def test_put_jobset_merges_and_omits_false_flags(hydra):
     assert 'visible' not in body and body['enabled'] == '2' and body['type'] == '1'
     with pytest.raises(ToolError, match='needs `flake`'):
         await server.call_tool('put_jobset', {'project': 'p', 'jobset': 'other'})
+
+
+async def test_put_project_creates_when_hydra_crashes_on_missing_project(hydra):
+    server, fake, _ = hydra
+    created = await call(server, 'put_project', {'project': 'newp', 'description': 'd'})
+    assert created['created'] is True
+    body = fake.puts['/project/newp']
+    assert body['name'] == 'newp' and body['displayname'] == 'newp' and body['enabled'] == '1'
 
 
 async def test_bad_credentials(tmp_path):
